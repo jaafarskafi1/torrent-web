@@ -10,6 +10,7 @@ var os = require("os");
 var del = require("del");
 var mime = require("mime");
 var archiver = require("archiver");
+const axios = require("axios");
 
 var client, url;
 
@@ -62,6 +63,26 @@ app.get("/magnet/", function(req, res) {
     res.send("success!");
   } catch (err) {
     res.send("error!" + err);
+  }
+});
+
+app.get("/piratebay/", async function(req, res) {
+  try {
+    let url = req.query.url;
+
+    const response = await axios.get(url);
+    const magnetUrl = response.data.match(
+      /(?<=url\('\/static\/img\/icons\/icon-magnet\.gif'\);" href=)(["'])(?:(?=(\\?))\2.)*?\1/g
+    );
+    const formattedMargnetUrl = magnetUrl[0].substring(
+      1,
+      magnetUrl[0].length - 1
+    );
+
+    addTorrent(formattedMargnetUrl);
+    res.send("success!");
+  } catch (err) {
+    res.send("response returned an error: ", err);
   }
 });
 
@@ -126,8 +147,8 @@ function deleteFiles() {
 function createTorrentEngine(torrent) {
   try {
     client = torrentStream(torrent, {
-      uploads: 3,
-      connections: 30,
+      uploads: 10,
+      connections: 200,
       path: DIR
     });
     client.ready(torrentReady);
